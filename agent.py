@@ -2,7 +2,7 @@ import os
 import time
 import threading
 from dotenv import load_dotenv
-from langchain_ollama import ChatOllama          # ganti dari langchain_groq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent  # type: ignore
 from langchain.tools import tool
 from db import (get_stock, place_order as db_place_order, update_stock,
@@ -134,11 +134,24 @@ def adjust_consumption_rate() -> str:
     rate = get_pakan_rate()
     return f"Fase saat ini membutuhkan pakan dengan laju {rate} gram per siklus. Sesuaikan simulator."
 
-# ======================== AGENT SETUP (OLLAMA) ========================
-llm = ChatOllama(
-    model="llama3.2",          # pastikan model sudah di-pull
-    temperature=0,
-)
+# ======================== AGENT SETUP (GEMINI) ========================
+def _get_llm():
+    """Inisialisasi LLM: Gemini di cloud, Ollama sebagai fallback lokal."""
+    google_api_key = os.environ.get("GOOGLE_API_KEY")
+    if google_api_key:
+        return ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash",
+            temperature=0,
+            google_api_key=google_api_key,
+        )
+    # Fallback ke Ollama saat development lokal
+    from langchain_ollama import ChatOllama
+    return ChatOllama(
+        model="llama3.2",
+        temperature=0,
+    )
+
+llm = _get_llm()
 
 tools = [
     check_stock,
